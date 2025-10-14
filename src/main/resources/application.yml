@@ -1,0 +1,7 @@
+server:
+  port: 8081
+spring:
+  datasource:
+    url: jdbc:mariadb://127.0.0.1/db
+    username: root
+    password: 123456
