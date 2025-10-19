@@ -1,7 +1,46 @@
 server:
-  port: 8081
+  port: 8080
 spring:
   datasource:
-    url: jdbc:mariadb://127.0.0.1/db
+    url: jdbc:mariadb://127.0.0.1/mini_app
     username: root
     password: 123456
+app:
+  jwt:
+    secret: yY7dv8dW0Dudg1c8oJdVt1l4Ig2vN9v5A0yD3bS2C7I=
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /docs
+    operationsSorter: method
+    tagsSorter: alpha
+docs:
+  groups:
+    - name: public
+      description: Public APIs
+      enabled: true
+      requireJwt: false
+      marker: publicApi
+      packages: [ "example.backend_mini_app.controller" ]
+      includePaths: [ "/api/**" ]
+      servers: [ "http://localhost:8080", "https://api.example.com" ]
+
+    - name: internal
+      description: Internal APIs
+      enabled: true
+      requireJwt: true
+      marker: internalApi
+      packages: [ "example.backend_mini_app.controller" ]
+      includePaths: [ "/api/**" ]
+      servers: [ "http://localhost:8080", "https://internal.example.com" ]
+zalo:
+  oauth:
+    app-id: 2946865265707862717
+    app-secret: e4AqUBRGV2N8S8CXV38P
+    default-redirect-uri: "http://localhost:3000/auth/zalo/callback"
+    scope: "profile"
+    auth-url:  "https://oauth.zaloapp.com/v4/permission"
+    token-url: "https://oauth.zaloapp.com/v4/access_token"
+    userinfo-url: "https://graph.zalo.me/v2.0/me"
+    state-ttl-seconds: 600
