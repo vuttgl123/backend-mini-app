@@ -18,7 +18,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMiniAppException(
             MiniAppException ex, WebRequest request) {
 
-        // Log lỗi
         logger.error("MiniAppException: {} - {}", ex.getCode(), ex.getMessage(), ex);
 
         ErrorResponse response = new ErrorResponse(
@@ -29,7 +28,6 @@ public class GlobalExceptionHandler {
                 request.getDescription(false).replace("uri=", "")
         );
 
-        // Thêm thông tin cause nếu có
         if (ex.getCause() != null) {
             response.addDetail("cause", ex.getCause().getMessage());
         }
@@ -41,7 +39,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneralException(
             Exception ex, WebRequest request) {
 
-        // Log lỗi
         logger.error("Unhandled Exception: {}", ex.getMessage(), ex);
 
         ErrorResponse response = new ErrorResponse(

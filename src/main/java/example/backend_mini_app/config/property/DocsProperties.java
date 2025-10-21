@@ -1,4 +1,4 @@
-package example.backend_mini_app.config;
+package example.backend_mini_app.config.property;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

@@ -1,4 +1,4 @@
-package example.backend_mini_app.mapper;
+package example.backend_mini_app.config;
 
 import org.mapstruct.MapperConfig;
 import org.mapstruct.NullValueCheckStrategy;

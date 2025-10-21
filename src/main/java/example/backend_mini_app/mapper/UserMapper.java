@@ -1,5 +1,6 @@
 package example.backend_mini_app.mapper;
 
+import example.backend_mini_app.config.MapStructConfig;
 import example.backend_mini_app.model.ZaloProfile;
 import example.backend_mini_app.model.entity.User;
 import example.backend_mini_app.model.enumeration.UserStatus;

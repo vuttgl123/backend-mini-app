@@ -1,44 +1,25 @@
 package example.backend_mini_app.config.jwt;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtException;
 
-import javax.crypto.SecretKey;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
-@Service
-public class JwtService {
+public interface JwtService {
 
-    private final SecretKey key;
-    private final JwtParser parser;
+    String generateAccessToken(String username, List<String> roles);
 
-    public JwtService(@Value("${app.jwt.secret}") String base64Secret) {
-        byte[] keyBytes = Base64.getDecoder().decode(base64Secret);
-        this.key = Keys.hmacShaKeyFor(keyBytes);
-        this.parser = Jwts.parserBuilder().setSigningKey(this.key).build();
-    }
+    String generateRefreshToken(String username);
 
-    public Jws<Claims> parse(String token) throws JwtException {
-        return parser.parseClaimsJws(token);
-    }
+    boolean isExpired(String token);
 
-    public String getUsername(String token) {
-        return parse(token).getBody().getSubject();
-    }
+    String getUsername(String token) throws JwtException;
 
-    @SuppressWarnings("unchecked")
-    public Collection<? extends GrantedAuthority> getAuthorities(String token) {
-        var claims = parse(token).getBody();
-        var roles = (List<String>) claims.getOrDefault("roles", List.of());
-        return roles.stream().map(SimpleGrantedAuthority::new).toList();
-    }
+    Collection<? extends GrantedAuthority> getAuthorities(String token) throws JwtException;
 
-    public boolean isExpired(String token) {
-        Date exp = parse(token).getBody().getExpiration();
-        return exp != null && exp.before(new Date());
-    }
+    void validate(String token) throws JwtException;
+
+    Map<String, Object> getClaims(String token) throws JwtException;
 }

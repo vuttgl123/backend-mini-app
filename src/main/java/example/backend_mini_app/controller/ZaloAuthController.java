@@ -24,6 +24,23 @@ public class ZaloAuthController {
         return service.init(req);
     }
 
+    @GetMapping("/init")
+    public ResponseEntity<Void> initGet(HttpServletRequest http) {
+        String host = opt(http.getHeader("X-Forwarded-Host"), http.getHeader("Host"));
+        String scheme = opt(http.getHeader("X-Forwarded-Proto"), http.getScheme());
+        String redirectUri = scheme + "://" + host + "/api/auth/zalo/callback";
+
+        var req = new AuthInitRequest();
+        req.setRedirectUri(redirectUri);
+        var init = service.init(req);
+
+        return ResponseEntity.status(302)
+                .header("Location", init.getAuthorizationUrl())
+                .build();
+    }
+
+    private static String opt(String a, String b) { return (a != null && !a.isBlank()) ? a : b; }
+
     @PostMapping("/callback")
     public LoginResponse callback(@Valid @RequestBody ZaloCallbackRequest req) {
         return service.callback(req);

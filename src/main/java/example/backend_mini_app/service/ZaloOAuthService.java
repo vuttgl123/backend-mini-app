@@ -1,8 +1,10 @@
-
 package example.backend_mini_app.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import example.backend_mini_app.config.ZaloOAuthProperties;
+import example.backend_mini_app.config.property.ZaloOAuthProperties;
+import example.backend_mini_app.exception.ErrorCode;
+import example.backend_mini_app.exception.MiniAppException;
 import example.backend_mini_app.mapper.UserIdentityMapper;
 import example.backend_mini_app.mapper.UserMapper;
 import example.backend_mini_app.model.ZaloProfile;
@@ -18,22 +20,23 @@ import example.backend_mini_app.repository.OAuthStateRepository;
 import example.backend_mini_app.repository.UserIdentityRepository;
 import example.backend_mini_app.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ZaloOAuthService {
 
     private final ZaloOAuthProperties props;
@@ -42,16 +45,27 @@ public class ZaloOAuthService {
     private final UserIdentityRepository uiRepo;
     private final UserMapper userMapper;
     private final UserIdentityMapper uiMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     private final @Qualifier("zaloWebClient") WebClient web;
 
+    public ZaloOAuthService(ZaloOAuthProperties props, OAuthStateRepository stateRepo, UserRepository userRepo, UserIdentityRepository uiRepo, UserMapper userMapper, UserIdentityMapper uiMapper, ObjectMapper objectMapper, @Qualifier("zaloWebClient") WebClient web) {
+        this.props = props;
+        this.stateRepo = stateRepo;
+        this.userRepo = userRepo;
+        this.uiRepo = uiRepo;
+        this.userMapper = userMapper;
+        this.uiMapper = uiMapper;
+        this.objectMapper = objectMapper;
+        this.web = web;
+    }
+
     @Transactional
     public AuthInitResponse init(AuthInitRequest req) {
-        String redirectUri = (req.getRedirectUri() != null) ? req.getRedirectUri() : props.defaultRedirectUri();
+        String redirectUri = Optional.ofNullable(req.getRedirectUri()).orElse(props.defaultRedirectUri());
         String stateStr = UUID.randomUUID().toString();
         Instant now = Instant.now();
-        Instant exp = now.plusSeconds(props.stateTtlSeconds() != null ? props.stateTtlSeconds() : 600);
+        Instant exp = now.plusSeconds(Optional.ofNullable(props.stateTtlSeconds()).orElse(600));
 
         var st = new OAuthState();
         st.setProvider(Provider.ZALO);
@@ -79,14 +93,16 @@ public class ZaloOAuthService {
     @Transactional
     public LoginResponse callback(ZaloCallbackRequest req) {
         var st = stateRepo.findByState(req.getState())
-                .orElseThrow(() -> new IllegalArgumentException("invalid_state"));
-        if (st.getConsumedAt() != null) throw new IllegalStateException("state_consumed");
-        if (Instant.now().isAfter(st.getExpiresAt())) throw new IllegalStateException("state_expired");
-        if (!st.getRedirectUri().equals(req.getRedirectUri())) throw new IllegalStateException("redirect_mismatch");
+                .orElseThrow(() -> ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "invalid_state"));
+        if (st.getConsumedAt() != null) throw ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "state_consumed");
+        if (Instant.now().isAfter(st.getExpiresAt())) throw ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "state_expired");
+        if (!st.getRedirectUri().equals(req.getRedirectUri())) throw ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "redirect_mismatch");
         st.setConsumedAt(Instant.now());
 
         var token = exchangeCodeForToken(req.getCode(), req.getRedirectUri());
+
         var profile = fetchProfile(token.accessToken());
+
         var user = upsertFromZalo(profile, token);
 
         var pair = new AuthTokenPairResponse();
@@ -101,8 +117,6 @@ public class ZaloOAuthService {
         return resp;
     }
 
-    /* ---------------- Helpers ---------------- */
-
     private record TokenPayload(String accessToken, String refreshToken, long expiresInSeconds, String scope){}
 
     private TokenPayload exchangeCodeForToken(String code, String redirectUri) {
@@ -111,52 +125,85 @@ public class ZaloOAuthService {
         form.add("code", code);
         form.add("redirect_uri", redirectUri);
         form.add("app_id", props.appId());
-        form.add("app_secret", props.appSecret()); // không hại, cứ gửi
+        form.add("app_secret", props.appSecret());
 
-        String resp = web.post()
-                .uri(props.tokenUrl()) // https://oauth.zaloapp.com/v4/access_token
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header("secret_key", props.appSecret()) // Quan trọng nếu toggle đang bật
-                .bodyValue(form)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        String respBody;
+        try {
+            respBody = web.post()
+                    .uri(props.tokenUrl())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .header("secret_key", props.appSecret())
+                    .bodyValue(form)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (WebClientResponseException ex) {
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE,
+                    "token_exchange_http_%d".formatted(ex.getRawStatusCode()), ex);
+        } catch (WebClientRequestException ex) {
+            throw ex(ErrorCode.ZALO_API_CONNECTION_ERROR, "token_exchange_connect_error", ex);
+        } catch (Exception ex) {
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "token_exchange_unknown_error", ex);
+        }
 
-        if (resp == null || resp.isBlank()) throw new IllegalStateException("token_exchange_empty");
+        if (respBody == null || respBody.isBlank()) {
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "token_exchange_empty");
+        }
 
         try {
-            var node = objectMapper.readTree(resp);
+            JsonNode node = objectMapper.readTree(respBody);
 
-            if (node.has("error") || node.has("error_code")) {
+            if (node.hasNonNull("error") || node.hasNonNull("error_code")) {
                 String ec = node.path("error").asText(node.path("error_code").asText("unknown"));
                 String msg = node.path("message").asText(node.path("error_description").asText(""));
-                throw new IllegalStateException("token_exchange_error: " + ec + " - " + msg);
+                // map một số mã quen thuộc
+                if ("invalid_grant".equalsIgnoreCase(ec) || "1004".equals(ec)) {
+                    throw ex(ErrorCode.ZALO_AUTH_CODE_EXPIRED, "token_exchange_error: " + ec + " - " + msg);
+                }
+                throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "token_exchange_error: " + ec + " - " + msg);
             }
 
-            String at = node.path("access_token").asText(null);
-            if (at == null) throw new IllegalStateException("token_exchange_no_access_token: " + truncate(resp));
+            String at = textOrNull(node, "access_token");
+            if (at == null) throw ex(ErrorCode.ZALO_INVALID_RESPONSE,
+                    "token_exchange_no_access_token: " + truncate(respBody));
 
-            String rt = node.path("refresh_token").asText(null);
+            String rt = textOrNull(node, "refresh_token");
             long exp = node.path("expires_in").asLong(3600);
-            String scope = node.path("scope").asText(null);
+            String scope = textOrNull(node, "scope");
             return new TokenPayload(at, rt, exp, scope);
 
+        } catch (MiniAppException e) {
+            throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("token_exchange_parse_error: " + truncate(resp));
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "token_exchange_parse_error: " + truncate(respBody), e);
         }
     }
 
     private ZaloProfile fetchProfile(String accessToken) {
         URI userinfo = URI.create(props.userinfoUrl());
         if (!userinfo.isAbsolute()) {
-            throw new IllegalStateException("userinfo_url_invalid: " + props.userinfoUrl());
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "userinfo_url_invalid: " + props.userinfoUrl());
         }
-        String resp = web.get()
-                .uri(userinfo)
-                .headers(h -> h.setBearerAuth(accessToken))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+
+        String resp;
+        try {
+            resp = web.get()
+                    .uri(userinfo)
+                    .headers(h -> h.setBearerAuth(accessToken))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (WebClientResponseException ex) {
+            int sc = ex.getRawStatusCode();
+            if (sc == 401 || sc == 403) {
+                throw ex(ErrorCode.ZALO_ACCESS_TOKEN_INVALID, "userinfo_http_%d".formatted(sc), ex);
+            }
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "userinfo_http_%d".formatted(sc), ex);
+        } catch (WebClientRequestException ex) {
+            throw ex(ErrorCode.ZALO_API_CONNECTION_ERROR, "userinfo_connect_error", ex);
+        } catch (Exception ex) {
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "userinfo_unknown_error", ex);
+        }
 
         try {
             Map body = objectMapper.readValue(resp, Map.class);
@@ -171,10 +218,12 @@ public class ZaloOAuthService {
                 p.setEmail((String) body.getOrDefault("email", null));
                 p.setRawJson(safeJson(body));
             }
-            if (p.getId() == null) throw new IllegalStateException("userinfo_missing_id");
+            if (p.getId() == null) throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "userinfo_missing_id");
             return p;
+        } catch (MiniAppException e) {
+            throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("userinfo_parse_error");
+            throw ex(ErrorCode.ZALO_INVALID_RESPONSE, "userinfo_parse_error", e);
         }
     }
 
@@ -205,5 +254,19 @@ public class ZaloOAuthService {
         }
     }
 
-    private String truncate(String s) { return s != null && s.length() > 500 ? s.substring(0,500)+"...(truncated)" : s; }
+    private MiniAppException ex(ErrorCode code, String message) {
+        return new MiniAppException(code, message);
+    }
+
+    private MiniAppException ex(ErrorCode code, String message, Throwable cause) {
+        return new MiniAppException(code, message, cause);
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+        return node.hasNonNull(field) ? node.get(field).asText() : null;
+    }
+
+    private String truncate(String s) {
+        return (s != null && s.length() > 500) ? s.substring(0, 500) + "...(truncated)" : s;
+    }
 }

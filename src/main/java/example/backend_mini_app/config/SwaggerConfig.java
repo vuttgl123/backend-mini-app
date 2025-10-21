@@ -1,10 +1,13 @@
 package example.backend_mini_app.config;
 
+import example.backend_mini_app.config.property.DocsProperties;
 import example.backend_mini_app.marker.InternalApi;
 import example.backend_mini_app.marker.PublicApi;
-import io.swagger.v3.oas.models.*;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.*;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.filters.OpenApiMethodFilter;
@@ -13,19 +16,20 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 @Configuration
 @EnableConfigurationProperties(DocsProperties.class)
-public class OpenApiConfig {
+public class SwaggerConfig {
 
     private static final String BEARER = "bearerAuth";
 
     @Bean
     OpenAPI baseOpenAPI() {
-        return new OpenAPI()
-                .info(new Info()
+        return new OpenAPI().info(new Info()
                         .title("MiniApp API")
                         .version("v1"));
     }
@@ -33,7 +37,7 @@ public class OpenApiConfig {
     @Bean
     List<GroupedOpenApi> groupedOpenApis(DocsProperties props) {
         List<GroupedOpenApi> result = new ArrayList<>();
-        if (props.groups() == null) return result;
+        if (props.groups() == null || props.groups().isEmpty()) return result;
 
         for (DocsProperties.Group g : props.groups()) {
             if (!g.enabled()) continue;
@@ -47,19 +51,19 @@ public class OpenApiConfig {
             if (g.excludePaths() != null && !g.excludePaths().isEmpty()) {
                 builder.pathsToExclude(g.excludePaths().toArray(String[]::new));
             }
+
             if (g.packages() != null && !g.packages().isEmpty()) {
                 builder.packagesToScan(g.packages().toArray(String[]::new));
             }
+
             if ((g.packages() == null || g.packages().isEmpty())
                     && (g.includePaths() == null || g.includePaths().isEmpty())) {
                 builder.pathsToMatch("/**");
             }
 
             OpenApiMethodFilter markerFilter = method -> {
-                Predicate<Class<?>> hasPublic = cls ->
-                        cls.isAnnotationPresent(PublicApi.class);
-                Predicate<Class<?>> hasInternal = cls ->
-                        cls.isAnnotationPresent(InternalApi.class);
+                Predicate<Class<?>> hasPublic = cls -> cls.isAnnotationPresent(PublicApi.class);
+                Predicate<Class<?>> hasInternal = cls -> cls.isAnnotationPresent(InternalApi.class);
                 Class<?> controller = method.getDeclaringClass();
 
                 return switch (g.marker()) {
@@ -79,7 +83,6 @@ public class OpenApiConfig {
 
     private OpenApiCustomizer openApiCustomizerForGroup(DocsProperties.Group g) {
         return openApi -> {
-            // Servers
             if (g.servers() != null && !g.servers().isEmpty()) {
                 List<Server> servers = new ArrayList<>();
                 for (String url : g.servers()) {
@@ -89,18 +92,21 @@ public class OpenApiConfig {
             }
 
             if (g.requireJwt()) {
-                Components components = Optional.ofNullable(openApi.getComponents()).orElseGet(Components::new);
+                Components components = Optional.ofNullable(openApi.getComponents())
+                        .orElseGet(Components::new);
+
                 components.addSecuritySchemes(BEARER, new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")
                         .in(SecurityScheme.In.HEADER)
                         .name("Authorization"));
+
                 openApi.setComponents(components);
 
-                SecurityRequirement requirement = new SecurityRequirement().addList(BEARER);
-                List<SecurityRequirement> reqs = Optional.ofNullable(openApi.getSecurity()).orElseGet(ArrayList::new);
-                reqs.add(requirement);
+                List<SecurityRequirement> reqs = Optional.ofNullable(openApi.getSecurity())
+                        .orElseGet(ArrayList::new);
+                reqs.add(new SecurityRequirement().addList(BEARER));
                 openApi.setSecurity(reqs);
             }
         };
