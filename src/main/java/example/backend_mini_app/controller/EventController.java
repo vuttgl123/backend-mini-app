@@ -4,8 +4,10 @@ import com.nlf.calendar.Lunar;
 import com.nlf.calendar.Solar;
 import example.backend_mini_app.config.EventConfig;
 import example.backend_mini_app.config.event.EventConfigService;
+import example.backend_mini_app.marker.PublicApi;
 import example.backend_mini_app.service.EventDateService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 
+@Tag(name = "Event Controller", description = "Các API phục vụ xem các sự kiện, lễ hội")
+@PublicApi
 @RestController
-@RequestMapping("/events")
+@RequestMapping("/api/events")
 @RequiredArgsConstructor
 public class EventController {
 

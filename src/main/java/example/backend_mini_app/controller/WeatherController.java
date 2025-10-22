@@ -1,9 +1,11 @@
 package example.backend_mini_app.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import example.backend_mini_app.marker.PublicApi;
 import example.backend_mini_app.service.WeatherApiService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Weather Controller", description = "Các API phục vụ xem thời tiết")
+@PublicApi
 @RestController
 @RequestMapping("/api/weather")
 @RequiredArgsConstructor
