@@ -1,0 +1,93 @@
+[
+  {
+    "code": "LUNAR_NEW_YEAR",
+    "name": "Tết Nguyên Đán",
+    "type": "LUNAR",
+    "month": 1,
+    "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_HUNG_KINGS",
+    "name": "Giỗ Tổ Hùng Vương",
+    "type": "LUNAR",
+    "month": 3,
+    "day": 10,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "LIBERATION_DAY",
+    "name": "Ngày Giải phóng miền Nam",
+    "type": "SOLAR",
+    "month": 4,
+    "day": 30,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "INTERNATIONAL_LABOR_DAY",
+    "name": "Ngày Quốc tế Lao động",
+    "type": "SOLAR",
+    "month": 5,
+    "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_INDEPENDENCE_DAY",
+    "name": "Quốc Khánh Việt Nam",
+    "type": "SOLAR",
+    "month": 9,
+    "day": 2,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "MID_AUTUMN",
+    "name": "Tết Trung Thu",
+    "type": "LUNAR",
+    "month": 8,
+    "day": 15,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_TEACHERS_DAY",
+    "name": "Ngày Nhà giáo Việt Nam",
+    "type": "SOLAR",
+    "month": 11,
+    "day": 20,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "CHRISTMAS",
+    "name": "Giáng Sinh",
+    "type": "SOLAR",
+    "month": 12,
+    "day": 25,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "NEW_YEAR",
+    "name": "Tết Dương Lịch",
+    "type": "SOLAR",
+    "month": 1,
+    "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "COMPANY_ANNIVERSARY",
+    "name": "Kỷ niệm thành lập công ty",
+    "type": "SOLAR",
+    "year": 2025,
+    "month": 12,
+    "day": 5,
+    "leapMonth": false,
+    "repeatAnnually": false
+  }
+]

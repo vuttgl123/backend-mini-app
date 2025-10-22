@@ -24,7 +24,16 @@ public enum ErrorCode {
 
     STATE_ALREADY_CONSUMED("STATE_001", "State đã bị sử dụng", 400),
     STATE_EXPIRED("STATE_002", "State đã hết hạn", 400),
-    STATE_REDIRECT_URI_MISMATCH("STATE_003", "Redirect URI không khớp", 400);
+    STATE_REDIRECT_URI_MISMATCH("STATE_003", "Redirect URI không khớp", 400),
+
+    EVENT_CONFIG_IO_ERROR("EVT_001", "Không thể đọc file cấu hình sự kiện", 500),
+    EVENT_CONFIG_INVALID_DATA("EVT_002", "Dữ liệu cấu hình sự kiện không hợp lệ", 400),
+    EVENT_CONFIG_DUPLICATE_CODE("EVT_003", "Mã sự kiện bị trùng lặp trong cấu hình", 400),
+    EVENT_CONFIG_EMPTY("EVT_004", "Danh sách cấu hình sự kiện không được để trống", 400)
+
+
+
+    ;
 
     private final String code;
     private final String message;
