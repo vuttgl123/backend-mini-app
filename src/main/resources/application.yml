@@ -105,6 +105,15 @@ app:
     internalApi:
       baseUrl: http://localhost:8080
       accept: "application/json"
+    weather:
+      baseUrl: https://api.weatherapi.com/v1
+      accept: application/json
+
+  weather:
+    key: 379eeea5dba84ccd86970651252210
+    ward:
+      lat: 20.941
+      lon: 106.333
 
 zalo:
   oauth:

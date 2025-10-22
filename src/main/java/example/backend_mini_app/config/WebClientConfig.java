@@ -41,6 +41,7 @@ public class WebClientConfig {
     public static class ClientsProps {
         private Client zalo = new Client();
         private Client internalApi = new Client();
+        private Client weather = new Client();
 
         @Data
         public static class Client {
@@ -106,6 +107,14 @@ public class WebClientConfig {
         return base.clone()
                 .baseUrl(clients.getInternalApi().getBaseUrl())
                 .defaultHeader("Accept", clients.getInternalApi().getAccept())
+                .build();
+    }
+
+    @Bean("weatherWebClient")
+    public WebClient weatherWebClient(WebClient.Builder base, ClientsProps clients) {
+        return base.clone()
+                .baseUrl(clients.getWeather().getBaseUrl())
+                .defaultHeader("Accept", clients.getWeather().getAccept())
                 .build();
     }
 
