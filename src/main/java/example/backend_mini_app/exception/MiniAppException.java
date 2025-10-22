@@ -36,8 +36,8 @@ public class MiniAppException extends RuntimeException {
         return errorCode.getHttpStatus();
     }
 
-    public String getServiceName() {
-        return errorCode.getServiceName();
+    public String getCategory() {
+        return errorCode.getCategory();
     }
 
 }

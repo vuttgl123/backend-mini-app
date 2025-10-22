@@ -23,7 +23,7 @@ public class GlobalExceptionHandler {
         ErrorResponse response = new ErrorResponse(
                 ex.getCode(),
                 ex.getMessage(),
-                ex.getServiceName(),
+                ex.getCategory(),
                 ex.getHttpStatus(),
                 request.getDescription(false).replace("uri=", "")
         );

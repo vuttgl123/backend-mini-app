@@ -92,15 +92,13 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public void validate(String token) throws JwtException {
-        decoder.decode(token); // Throws JwtException if invalid
+        decoder.decode(token);
     }
 
     @Override
     public Map<String, Object> getClaims(String token) throws JwtException {
         return decoder.decode(token).getClaims();
     }
-
-    // ========== Private Helper Methods ==========
 
     private List<String> extractRoles(Object raw) {
         if (raw instanceof Collection<?> collection) {

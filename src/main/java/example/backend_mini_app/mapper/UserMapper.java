@@ -22,7 +22,7 @@ public interface UserMapper {
     @Mapping(target = "refreshTokens", ignore = true)
     User newFromZalo(ZaloProfile profile);
 
-    @BeanMapping(ignoreByDefault = true) // tránh lỗi unmapped target
+    @BeanMapping(ignoreByDefault = true)
     @Mappings({
             @Mapping(target = "displayName", source = "name"),
             @Mapping(target = "avatarUrl",   source = "picture"),
