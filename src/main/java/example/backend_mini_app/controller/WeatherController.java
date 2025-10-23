@@ -23,7 +23,6 @@ public class WeatherController {
 
     private final WeatherApiService weather;
 
-
     @Operation(
             summary = "Lấy thông tin thời tiết hiện tại",
             description = "Trả về dữ liệu thời tiết hiện tại tại phường Hải Dương, thành phố Hải Phòng"
