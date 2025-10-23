@@ -4,9 +4,10 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mariadb://127.0.0.1/mini_app
-    username: root
-    password: 123456
+    url: jdbc:postgresql://dpg-d3t5oebipnbc738f5bl0-a.singapore-postgres.render.com:5432/mini_app_a32f
+    username: mini_app_a32f_user
+    password: MT7TbJRbBnoxy10ttCq3AKMLMn27dH8M
+    driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: main-pool
       maximum-pool-size: 10
