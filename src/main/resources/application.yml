@@ -114,16 +114,14 @@ app:
     ward:
       lat: 20.941
       lon: 106.333
-
-  app:
-    minio:
-      endpoint: http://127.0.0.1:9000
-      accessKey: minioadmin
-      secretKey: minioadmin
-      bucket: mybucket
-      presignExpirySeconds: 900
-    cdn:
-      baseUrl: http://127.0.0.1:9000/mybucket
+  minio:
+    endpoint: http://127.0.0.1:9000
+    accessKey: minioadmin
+    secretKey: minioadmin
+    bucket: mybucket
+    presignExpirySeconds: 900
+  cdn:
+    baseUrl: http://127.0.0.1:9000/mybucket
 
 zalo:
   oauth:
