@@ -10,10 +10,11 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/target/backend-mini-app-0.0.1-SNAPSHOT.jar /app/app.jar
 
-# Tối ưu JVM cho máy nhỏ
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseG1GC -XshowSettings:vm"
+# Giữ JVM gọn cho máy nhỏ; **bỏ -XshowSettings:vm**
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseG1GC"
 
+# Render cấp PORT động; 8080 để tài liệu/local
 EXPOSE 8080
 
-# Quan trọng: dùng shell để expand $PORT và set server.port
+# Dùng shell để expand $PORT và truyền cho Spring
 CMD sh -c 'java -Dserver.port=${PORT:-8080} -jar /app/app.jar'
