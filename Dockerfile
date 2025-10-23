@@ -1,23 +1,19 @@
-# Giai đoạn build
+# ==== BUILD ====
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
-
-# Copy toàn bộ source code
 COPY pom.xml .
 COPY src ./src
+RUN mvn -q -DskipTests clean package
 
-# Build file jar
-RUN mvn clean package -DskipTests
-
-# Giai đoạn run
-FROM eclipse-temurin:21-jdk
+# ==== RUN ====
+FROM eclipse-temurin:21-jre
 WORKDIR /app
+COPY --from=build /app/target/backend-mini-app-0.0.1-SNAPSHOT.jar /app/app.jar
 
-# Copy file jar từ giai đoạn build
-COPY --from=build /app/target/backend-mini-app-0.0.1-SNAPSHOT.jar app.jar
+# Tối ưu JVM cho máy nhỏ
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseG1GC -XshowSettings:vm"
 
-# Expose port 8080 (Render sẽ dùng biến PORT)
 EXPOSE 8080
 
-# Run app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Quan trọng: dùng shell để expand $PORT và set server.port
+CMD sh -c 'java -Dserver.port=${PORT:-8080} -jar /app/app.jar'
