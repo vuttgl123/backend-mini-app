@@ -41,8 +41,9 @@ public class WebConfig {
     };
 
     private static final String[] API_WEBHOOKS = {
-            "/webhooks/**",
-            "/api/webhooks/**"
+            "/zalo/webhooks/**",
+            "/zalo/api/webhooks/**",
+            "/legal/terms"
     };
 
     private static final String[] API_INTERNAL = {

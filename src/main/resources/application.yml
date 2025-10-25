@@ -112,6 +112,7 @@ app:
     ward:
       lat: 20.941
       lon: 106.333
+
   minio:
     endpoint: http://127.0.0.1:9000
     accessKey: minioadmin
@@ -120,6 +121,9 @@ app:
     presignExpirySeconds: 900
   cdn:
     baseUrl: http://127.0.0.1:9000/mybucket
+
+  webhook:
+    secret:
 
 zalo:
   oauth:
