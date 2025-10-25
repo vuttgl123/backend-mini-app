@@ -123,8 +123,8 @@ app:
 
 zalo:
   oauth:
-    app-id: 2946865265707862717
-    app-secret: e4AqUBRGV2N8S8CXV38P
+    app-id: 347307996368758143
+    app-secret: pqJXAQSlOP0XITyrjAT3
     default-redirect-uri: "https://test-backend-8gia.onrender.com/api/auth/zalo/callback"
     scope: "profile"
     auth-url:  "https://oauth.zaloapp.com/v4/permission"
