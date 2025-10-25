@@ -28,16 +28,14 @@ public class CorsConfig {
                 "https://*.onrender.com",
                 "https://mini.zalo.me",
                 "https://*.zalo.me",
+                "https://hoppscotch.io",
                 "http://localhost:*",
                 "http://127.0.0.1:*"
         ));
-        cfg.setAllowedMethods(split(allowedMethods));
-        cfg.setAllowedHeaders(split(allowedHeaders));
-        cfg.setAllowCredentials(allowCredentials);
-        cfg.setExposedHeaders(List.of(
-                "Location", "Content-Disposition", "X-Request-Id", "X-Trace-Id",
-                "Authorization", "X-Total-Count"
-        ));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With","X-Trace-Id","X-Request-Id"));
+        cfg.setExposedHeaders(List.of("Location","Content-Disposition","X-Request-Id","X-Trace-Id","Authorization","X-Total-Count"));
+        cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
