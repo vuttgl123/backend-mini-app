@@ -26,7 +26,8 @@ public interface UserMapper {
     @Mappings({
             @Mapping(target = "displayName", source = "name"),
             @Mapping(target = "avatarUrl",   source = "picture"),
-            @Mapping(target = "phone",       source = "phone")
+            @Mapping(target = "phone",       source = "phone"),
+            @Mapping(target = "email",       source = "email")
     })
     void patchFromZalo(ZaloProfile profile, @MappingTarget User user);
 

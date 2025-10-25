@@ -36,6 +36,7 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -207,65 +208,42 @@ public class ZaloOAuthService {
     }
 
     private ZaloProfile fetchProfile(String accessToken) {
-        URI userinfo = UriComponentsBuilder.fromUriString(props.userinfoUrl())
+        URI uri = UriComponentsBuilder.fromUriString(props.userinfoUrl())
                 .queryParam("access_token", accessToken)
                 .queryParam("fields", "id,name,picture,avatar,phone,email")
                 .build(true).toUri();
 
-        String resp;
+        String resp = web.get().uri(uri).retrieve().bodyToMono(String.class).block();
+        Map body = null;
         try {
-            resp = web.get()
-                    .uri(userinfo)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-        } catch (WebClientResponseException | WebClientRequestException e) {
-            if (e instanceof WebClientResponseException wre) {
-                int sc = wre.getStatusCode().value();
-                if (sc == 401) throw ErrorHelper.ex(ErrorCode.AUTH_ACCESS_TOKEN_INVALID, "userinfo_http_401", e);
-                if (sc == 403) throw ErrorHelper.ex(ErrorCode.AUTH_USER_DENIED, "userinfo_http_403", e);
-            }
-            throw WebClientHelper.mapException(e, "userinfo");
-        } catch (Exception e) {
-            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_unknown_error", e);
+            body = objectMapper.readValue(resp, Map.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Lỗi khi parse JSON response: " + e.getMessage());
         }
 
-        try {
-            Map<String, Object> body = objectMapper.readValue(resp, Map.class);
-            var p = new ZaloProfile();
-            if (body != null) {
-                p.setId(String.valueOf(body.get("id")));
-                p.setName((String) body.getOrDefault("name", null));
+        Object idObj = body.get("id");
+        String id = (idObj == null) ? null : String.valueOf(idObj);
+        if (id == null || id.isBlank() || "null".equalsIgnoreCase(id.trim()))
+            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_missing_id");
 
-                // handle picture: String hoặc { data: { url: "..." } }
-                String pictureUrl = null;
-                Object picture = body.get("picture");
-                if (picture instanceof String s) {
-                    pictureUrl = s;
-                } else if (picture instanceof Map picMap) {
-                    Object data = ((Map<?, ?>) picMap).get("data");
-                    if (data instanceof Map dataMap) {
-                        Object url = dataMap.get("url");
-                        if (url != null) pictureUrl = String.valueOf(url);
-                    }
-                }
-                if (pictureUrl == null) {
-                    Object avatar = body.get("avatar");
-                    if (avatar != null) pictureUrl = String.valueOf(avatar);
-                }
-                p.setPicture(pictureUrl);
+        var p = new ZaloProfile();
+        p.setId(id);
+        p.setName((String) body.getOrDefault("name", null));
 
-                p.setPhone((String) body.getOrDefault("phone", null));
-                p.setEmail((String) body.getOrDefault("email", null));
-                p.setRawJson(JsonUtils.toJson(objectMapper, body));
-            }
-            if (p.getId() == null) throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_missing_id");
-            return p;
-        } catch (MiniAppException e) {
-            throw e;
-        } catch (Exception e) {
-            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_parse_error", e);
+        String pictureUrl = null;
+        Object picture = body.get("picture");
+        if (picture instanceof Map<?,?> pic) {
+            Object data = pic.get("data");
+            if (data instanceof Map<?,?> d && d.get("url") != null) pictureUrl = String.valueOf(d.get("url"));
         }
+        if (pictureUrl == null && body.get("avatar") != null) pictureUrl = String.valueOf(body.get("avatar"));
+        p.setPicture(pictureUrl);
+
+        p.setPhone((String) body.getOrDefault("phone", null));
+        p.setEmail((String) body.getOrDefault("email", null));
+        p.setRawJson(JsonUtils.toJson(objectMapper, body));
+        return p;
     }
 
     private User upsertFromZalo(ZaloProfile profile, TokenPayload token) {
