@@ -207,28 +207,23 @@ public class ZaloOAuthService {
     }
 
     private ZaloProfile fetchProfile(String accessToken) {
-        URI userinfo = URI.create(props.userinfoUrl());
-        if (!userinfo.isAbsolute()) {
-            throw ErrorHelper.ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "userinfo_url_invalid: " + props.userinfoUrl());
-        }
+        URI userinfo = UriComponentsBuilder.fromUriString(props.userinfoUrl())
+                .queryParam("access_token", accessToken)
+                .queryParam("fields", "id,name,picture,avatar,phone,email")
+                .build(true).toUri();
 
         String resp;
         try {
             resp = web.get()
                     .uri(userinfo)
-                    .headers(h -> h.setBearerAuth(accessToken))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
         } catch (WebClientResponseException | WebClientRequestException e) {
             if (e instanceof WebClientResponseException wre) {
                 int sc = wre.getStatusCode().value();
-                if (sc == 401) {
-                    throw ErrorHelper.ex(ErrorCode.AUTH_ACCESS_TOKEN_INVALID, "userinfo_http_401", e);
-                }
-                if (sc == 403) {
-                    throw ErrorHelper.ex(ErrorCode.AUTH_USER_DENIED, "userinfo_http_403", e);
-                }
+                if (sc == 401) throw ErrorHelper.ex(ErrorCode.AUTH_ACCESS_TOKEN_INVALID, "userinfo_http_401", e);
+                if (sc == 403) throw ErrorHelper.ex(ErrorCode.AUTH_USER_DENIED, "userinfo_http_403", e);
             }
             throw WebClientHelper.mapException(e, "userinfo");
         } catch (Exception e) {
@@ -236,14 +231,30 @@ public class ZaloOAuthService {
         }
 
         try {
-            Map body = objectMapper.readValue(resp, Map.class);
+            Map<String, Object> body = objectMapper.readValue(resp, Map.class);
             var p = new ZaloProfile();
             if (body != null) {
                 p.setId(String.valueOf(body.get("id")));
                 p.setName((String) body.getOrDefault("name", null));
-                Object pic = body.get("picture");
-                if (pic == null) pic = body.get("avatar");
-                p.setPicture(pic == null ? null : String.valueOf(pic));
+
+                // handle picture: String hoặc { data: { url: "..." } }
+                String pictureUrl = null;
+                Object picture = body.get("picture");
+                if (picture instanceof String s) {
+                    pictureUrl = s;
+                } else if (picture instanceof Map picMap) {
+                    Object data = ((Map<?, ?>) picMap).get("data");
+                    if (data instanceof Map dataMap) {
+                        Object url = dataMap.get("url");
+                        if (url != null) pictureUrl = String.valueOf(url);
+                    }
+                }
+                if (pictureUrl == null) {
+                    Object avatar = body.get("avatar");
+                    if (avatar != null) pictureUrl = String.valueOf(avatar);
+                }
+                p.setPicture(pictureUrl);
+
                 p.setPhone((String) body.getOrDefault("phone", null));
                 p.setEmail((String) body.getOrDefault("email", null));
                 p.setRawJson(JsonUtils.toJson(objectMapper, body));
