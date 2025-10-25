@@ -64,9 +64,7 @@ docs:
       marker: publicApi
       packages: [ "example.backend_mini_app.controller" ]
       includePaths: [ "/api/**" ]
-      servers:
-        - http://localhost:8080
-        - https://api.example.com
+      servers: [ "/" ]
 
     - name: internal
       description: Internal APIs
@@ -75,13 +73,11 @@ docs:
       marker: internalApi
       packages: [ "example.backend_mini_app.controller" ]
       includePaths: [ "/api/**" ]
-      servers:
-        - http://localhost:8080
-        - https://internal.example.com
+      servers: [ "/" ]
 
 app:
   cors:
-    allowed-origins: "http://localhost:3000"
+    allowed-origins: ""
     allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
     allowed-headers: "*"
     allow-credentials: true
@@ -104,7 +100,7 @@ app:
       baseUrl: https://graph.zalo.me
       accept: "application/json, text/json"
     internalApi:
-      baseUrl: http://localhost:8080
+      baseUrl: https://test-backend-8gia.onrender.com
       accept: "application/json"
     weather:
       baseUrl: https://api.weatherapi.com/v1
@@ -128,7 +124,7 @@ zalo:
   oauth:
     app-id: 2946865265707862717
     app-secret: e4AqUBRGV2N8S8CXV38P
-    default-redirect-uri: "http://localhost:3000/auth/zalo/callback"
+    default-redirect-uri: "https://test-backend-8gia.onrender.com/api/auth/zalo/callback"
     scope: "profile"
     auth-url:  "https://oauth.zaloapp.com/v4/permission"
     token-url: "https://oauth.zaloapp.com/v4/access_token"

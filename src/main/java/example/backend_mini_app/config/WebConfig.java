@@ -67,6 +67,16 @@ public class WebConfig {
     private static final String[] API_INTEGRATIONS = { "/api/integrations/**", "/api/v1/integrations/**" };
 
     @Bean
+    @Order(0)
+    SecurityFilterChain zaloVerify(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/zalo_verifier*.html")
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
     @Order(1)
     SecurityFilterChain docsAndStatic(HttpSecurity http) throws Exception {
         http

@@ -24,7 +24,13 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(split(allowedOrigins));
+        cfg.setAllowedOriginPatterns(List.of(
+                "https://*.onrender.com",
+                "https://mini.zalo.me",
+                "https://*.zalo.me",
+                "http://localhost:*",
+                "http://127.0.0.1:*"
+        ));
         cfg.setAllowedMethods(split(allowedMethods));
         cfg.setAllowedHeaders(split(allowedHeaders));
         cfg.setAllowCredentials(allowCredentials);
@@ -38,6 +44,7 @@ public class CorsConfig {
         source.registerCorsConfiguration("/**", cfg);
         return source;
     }
+
 
     private static List<String> split(String csv) {
         return Arrays.stream(csv.split(","))
