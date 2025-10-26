@@ -26,6 +26,7 @@ import example.backend_mini_app.shared.helper.WebClientHelper;
 import example.backend_mini_app.shared.util.JsonUtils;
 import example.backend_mini_app.shared.util.StringUtils;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class ZaloOAuthService {
 
     private final ZaloOAuthProperties props;
@@ -213,38 +215,54 @@ public class ZaloOAuthService {
                 .queryParam("fields", "id,name,picture,avatar,phone,email")
                 .build(true).toUri();
 
-        String resp = web.get().uri(uri).retrieve().bodyToMono(String.class).block();
-        Map body = null;
+        String resp = web.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        log.info("zaloUserinfoRaw={}", resp); // giữ lại để so sánh local vs render
+
+        com.fasterxml.jackson.databind.JsonNode node;
         try {
-            body = objectMapper.readValue(resp, Map.class);
+            node = objectMapper.readTree(resp);
         } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("Lỗi khi parse JSON response: " + e.getMessage());
+            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_parse_error", e);
         }
 
-        Object idObj = body.get("id");
-        String id = (idObj == null) ? null : String.valueOf(idObj);
-        if (id == null || id.isBlank() || "null".equalsIgnoreCase(id.trim()))
-            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_missing_id");
+        String id = extractZaloId(node);
+        if (id == null || id.isBlank()) {
+            throw ErrorHelper.ex(
+                    ErrorCode.REMOTE_INVALID_RESPONSE,
+                    "userinfo_missing_id: " + StringUtils.truncate(resp, 300)
+            );
+        }
 
-        var p = new ZaloProfile();
+        ZaloProfile p = new ZaloProfile();
         p.setId(id);
-        p.setName((String) body.getOrDefault("name", null));
+        p.setName(JsonUtils.getText(node, "name"));
 
-        String pictureUrl = null;
-        Object picture = body.get("picture");
-        if (picture instanceof Map<?,?> pic) {
-            Object data = pic.get("data");
-            if (data instanceof Map<?,?> d && d.get("url") != null) pictureUrl = String.valueOf(d.get("url"));
-        }
-        if (pictureUrl == null && body.get("avatar") != null) pictureUrl = String.valueOf(body.get("avatar"));
-        p.setPicture(pictureUrl);
+        // picture: ưu tiên picture.data.url; fallback avatar
+        String pic = null;
+        var picNode = node.path("picture").path("data").path("url");
+        if (!picNode.isMissingNode() && !picNode.isNull()) pic = picNode.asText();
+        if (pic == null && node.hasNonNull("avatar")) pic = node.get("avatar").asText();
+        p.setPicture(pic);
 
-        p.setPhone((String) body.getOrDefault("phone", null));
-        p.setEmail((String) body.getOrDefault("email", null));
-        p.setRawJson(JsonUtils.toJson(objectMapper, body));
+        p.setPhone(JsonUtils.getText(node, "phone"));
+        p.setEmail(JsonUtils.getText(node, "email"));
+        p.setRawJson(resp);
         return p;
     }
+
+    private String extractZaloId(com.fasterxml.jackson.databind.JsonNode root) {
+        if (root.hasNonNull("id")) return root.get("id").asText();                // Graph login chuẩn
+        if (root.hasNonNull("user_id")) return root.get("user_id").asText();      // Biến thể
+        var data = root.path("data");
+        if (data.hasNonNull("user_id")) return data.get("user_id").asText();      // OA-format/wrapper
+        return null;
+    }
+
 
     private User upsertFromZalo(ZaloProfile profile, TokenPayload token) {
         var opt = uiRepo.findByProviderAndProviderUserId(Provider.ZALO, profile.getId());
