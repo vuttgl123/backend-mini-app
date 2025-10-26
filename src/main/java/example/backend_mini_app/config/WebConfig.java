@@ -61,6 +61,9 @@ public class WebConfig {
     private static final String[] API_WEATHER = {
             "/api/weather/**"
     };
+    private static final String[] API_EVENT = {
+            "/api/events/**"
+    };
 
     private static final String[] API_GRAPHQL = { "/graphql", "/graphiql/**" };
     private static final String[] API_FILES   = { "/api/files/**", "/api/v1/files/**" };
@@ -135,6 +138,7 @@ public class WebConfig {
                         .requestMatchers(API_PUBLIC).permitAll()
                         .requestMatchers(API_WEBHOOKS).permitAll()
                         .requestMatchers(API_WEATHER).permitAll()
+                        .requestMatchers(API_EVENT).permitAll()
 
 
                         .requestMatchers(API_GRAPHQL).authenticated()
