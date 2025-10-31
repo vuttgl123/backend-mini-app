@@ -26,6 +26,7 @@ import example.backend_mini_app.shared.helper.WebClientHelper;
 import example.backend_mini_app.shared.util.JsonUtils;
 import example.backend_mini_app.shared.util.StringUtils;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -44,6 +46,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class ZaloOAuthService {
 
     private final ZaloOAuthProperties props;
@@ -207,55 +210,59 @@ public class ZaloOAuthService {
     }
 
     private ZaloProfile fetchProfile(String accessToken) {
-        URI userinfo = URI.create(props.userinfoUrl());
-        if (!userinfo.isAbsolute()) {
-            throw ErrorHelper.ex(ErrorCode.SYSTEM_INTERNAL_ERROR, "userinfo_url_invalid: " + props.userinfoUrl());
-        }
+        URI uri = UriComponentsBuilder.fromUriString(props.userinfoUrl())
+                .queryParam("access_token", accessToken)
+                .queryParam("fields", "id,name,picture,avatar,phone,email")
+                .build(true).toUri();
 
-        String resp;
-        try {
-            resp = web.get()
-                    .uri(userinfo)
-                    .headers(h -> h.setBearerAuth(accessToken))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-        } catch (WebClientResponseException | WebClientRequestException e) {
-            if (e instanceof WebClientResponseException wre) {
-                int sc = wre.getStatusCode().value();
-                if (sc == 401) {
-                    throw ErrorHelper.ex(ErrorCode.AUTH_ACCESS_TOKEN_INVALID, "userinfo_http_401", e);
-                }
-                if (sc == 403) {
-                    throw ErrorHelper.ex(ErrorCode.AUTH_USER_DENIED, "userinfo_http_403", e);
-                }
-            }
-            throw WebClientHelper.mapException(e, "userinfo");
-        } catch (Exception e) {
-            throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_unknown_error", e);
-        }
+        String resp = web.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
+        log.info("zaloUserinfoRaw={}", resp); // giữ lại để so sánh local vs render
+
+        com.fasterxml.jackson.databind.JsonNode node;
         try {
-            Map body = objectMapper.readValue(resp, Map.class);
-            var p = new ZaloProfile();
-            if (body != null) {
-                p.setId(String.valueOf(body.get("id")));
-                p.setName((String) body.getOrDefault("name", null));
-                Object pic = body.get("picture");
-                if (pic == null) pic = body.get("avatar");
-                p.setPicture(pic == null ? null : String.valueOf(pic));
-                p.setPhone((String) body.getOrDefault("phone", null));
-                p.setEmail((String) body.getOrDefault("email", null));
-                p.setRawJson(JsonUtils.toJson(objectMapper, body));
-            }
-            if (p.getId() == null) throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_missing_id");
-            return p;
-        } catch (MiniAppException e) {
-            throw e;
-        } catch (Exception e) {
+            node = objectMapper.readTree(resp);
+        } catch (IOException e) {
             throw ErrorHelper.ex(ErrorCode.REMOTE_INVALID_RESPONSE, "userinfo_parse_error", e);
         }
+
+        String id = extractZaloId(node);
+        if (id == null || id.isBlank()) {
+            throw ErrorHelper.ex(
+                    ErrorCode.REMOTE_INVALID_RESPONSE,
+                    "userinfo_missing_id: " + StringUtils.truncate(resp, 300)
+            );
+        }
+
+        ZaloProfile p = new ZaloProfile();
+        p.setId(id);
+        p.setName(JsonUtils.getText(node, "name"));
+
+        // picture: ưu tiên picture.data.url; fallback avatar
+        String pic = null;
+        var picNode = node.path("picture").path("data").path("url");
+        if (!picNode.isMissingNode() && !picNode.isNull()) pic = picNode.asText();
+        if (pic == null && node.hasNonNull("avatar")) pic = node.get("avatar").asText();
+        p.setPicture(pic);
+
+        p.setPhone(JsonUtils.getText(node, "phone"));
+        p.setEmail(JsonUtils.getText(node, "email"));
+        p.setRawJson(resp);
+        return p;
     }
+
+    private String extractZaloId(com.fasterxml.jackson.databind.JsonNode root) {
+        if (root.hasNonNull("id")) return root.get("id").asText();                // Graph login chuẩn
+        if (root.hasNonNull("user_id")) return root.get("user_id").asText();      // Biến thể
+        var data = root.path("data");
+        if (data.hasNonNull("user_id")) return data.get("user_id").asText();      // OA-format/wrapper
+        return null;
+    }
+
 
     private User upsertFromZalo(ZaloProfile profile, TokenPayload token) {
         var opt = uiRepo.findByProviderAndProviderUserId(Provider.ZALO, profile.getId());

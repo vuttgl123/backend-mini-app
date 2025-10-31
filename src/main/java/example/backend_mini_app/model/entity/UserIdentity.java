@@ -70,7 +70,7 @@ public class UserIdentity {
     private Instant tokenExpiresAt;
 
     @Setter
-    @Column(name = "raw_profile", columnDefinition = "json")
+    @Column(name = "raw_profile", columnDefinition = "jsonb")
     @Schema(description = "Thông tin profile gốc từ nhà cung cấp (dạng JSON)", example = "{\"name\":\"Nguyễn Văn A\"}")
     private String rawProfileJson;
 

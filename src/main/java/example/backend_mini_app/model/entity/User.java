@@ -29,6 +29,7 @@ public class User {
     @Schema(description = "ID người dùng", example = "1")
     private Long id;
 
+    @Setter
     @Column(length = 255, unique = true)
     @Schema(description = "Email người dùng", example = "user@example.com")
     private String email;

@@ -41,8 +41,9 @@ public class WebConfig {
     };
 
     private static final String[] API_WEBHOOKS = {
-            "/webhooks/**",
-            "/api/webhooks/**"
+            "/zalo/webhooks/**",
+            "/zalo/api/webhooks/**",
+            "/legal/terms"
     };
 
     private static final String[] API_INTERNAL = {
@@ -57,6 +58,12 @@ public class WebConfig {
     private static final String[] API_MOBILE = {
             "/api/mobile/**", "/api/v1/mobile/**"
     };
+    private static final String[] API_WEATHER = {
+            "/api/weather/**"
+    };
+    private static final String[] API_EVENT = {
+            "/api/events/**"
+    };
 
     private static final String[] API_GRAPHQL = { "/graphql", "/graphiql/**" };
     private static final String[] API_FILES   = { "/api/files/**", "/api/v1/files/**" };
@@ -65,6 +72,16 @@ public class WebConfig {
     private static final String[] API_ANALYTICS = { "/api/analytics/**", "/api/v1/analytics/**" };
     private static final String[] API_NOTIFICATIONS = { "/api/notifications/**", "/api/v1/notifications/**" };
     private static final String[] API_INTEGRATIONS = { "/api/integrations/**", "/api/v1/integrations/**" };
+
+    @Bean
+    @Order(0)
+    SecurityFilterChain zaloVerify(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/zalo_verifier*.html")
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        return http.build();
+    }
 
     @Bean
     @Order(1)
@@ -120,6 +137,8 @@ public class WebConfig {
                         .requestMatchers(API_AUTH).permitAll()
                         .requestMatchers(API_PUBLIC).permitAll()
                         .requestMatchers(API_WEBHOOKS).permitAll()
+                        .requestMatchers(API_WEATHER).permitAll()
+                        .requestMatchers(API_EVENT).permitAll()
 
 
                         .requestMatchers(API_GRAPHQL).authenticated()

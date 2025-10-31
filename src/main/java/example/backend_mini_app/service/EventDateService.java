@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class EventDateService {
 
     public List<EventView> listForYear(int year) {
         return eventConfigService.getAll().stream()
+                .filter(e -> e.repeatAnnually() || e.year() == year)
                 .map(e -> new EventView(
                         e.code(), e.name(), String.valueOf(e.type()), toSolarDateForYear(e, year)))
                 .sorted(Comparator.comparing(EventView::date))
@@ -44,14 +46,18 @@ public class EventDateService {
 
     public List<EventView> upcoming(int limit) {
         LocalDate today = LocalDate.now();
-        List<EventView> thisYear = listForYear(today.getYear());
-        List<EventView> nextYear  = listForYear(today.plusYears(1).getYear());
-        return thisYear.stream().filter(v -> !v.date().isBefore(today))
-                        .toList()
-                        .stream()
-                        .sorted(Comparator.comparing(EventView::date))
-                        .limit(limit)
-                        .collect(Collectors.toList());
+        int currentYear = today.getYear();
+
+        List<EventView> thisYear = listForYear(currentYear);
+        List<EventView> nextYear = listForYear(currentYear + 1);
+
+        return Stream.concat(
+                        thisYear.stream().filter(v -> !v.date().isBefore(today)),
+                        nextYear.stream()
+                )
+                .sorted(Comparator.comparing(EventView::date))
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 
     public record EventView(String code, String name, String type, LocalDate date) {}

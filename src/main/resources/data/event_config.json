@@ -1,10 +1,37 @@
 [
   {
+    "code": "NEW_YEAR",
+    "name": "Tết Dương Lịch",
+    "type": "SOLAR",
+    "month": 1,
+    "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
     "code": "LUNAR_NEW_YEAR",
     "name": "Tết Nguyên Đán",
     "type": "LUNAR",
     "month": 1,
     "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VALENTINE_DAY",
+    "name": "Ngày Lễ Tình Nhân",
+    "type": "SOLAR",
+    "month": 2,
+    "day": 14,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "INTERNATIONAL_WOMEN_DAY",
+    "name": "Ngày Quốc tế Phụ nữ",
+    "type": "SOLAR",
+    "month": 3,
+    "day": 8,
     "leapMonth": false,
     "repeatAnnually": true
   },
@@ -36,11 +63,20 @@
     "repeatAnnually": true
   },
   {
-    "code": "VN_INDEPENDENCE_DAY",
-    "name": "Quốc Khánh Việt Nam",
+    "code": "INTERNATIONAL_CHILDREN_DAY",
+    "name": "Ngày Quốc tế Thiếu nhi",
     "type": "SOLAR",
-    "month": 9,
-    "day": 2,
+    "month": 6,
+    "day": 1,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_FAMILY_DAY",
+    "name": "Ngày Gia đình Việt Nam",
+    "type": "SOLAR",
+    "month": 6,
+    "day": 28,
     "leapMonth": false,
     "repeatAnnually": true
   },
@@ -50,6 +86,33 @@
     "type": "LUNAR",
     "month": 8,
     "day": 15,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_INDEPENDENCE_DAY",
+    "name": "Quốc Khánh Việt Nam",
+    "type": "SOLAR",
+    "month": 9,
+    "day": 2,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "VN_WOMEN_DAY",
+    "name": "Ngày Phụ nữ Việt Nam",
+    "type": "SOLAR",
+    "month": 10,
+    "day": 20,
+    "leapMonth": false,
+    "repeatAnnually": true
+  },
+  {
+    "code": "HALLOWEEN",
+    "name": "Lễ Hội Halloween",
+    "type": "SOLAR",
+    "month": 10,
+    "day": 31,
     "leapMonth": false,
     "repeatAnnually": true
   },
@@ -68,15 +131,6 @@
     "type": "SOLAR",
     "month": 12,
     "day": 25,
-    "leapMonth": false,
-    "repeatAnnually": true
-  },
-  {
-    "code": "NEW_YEAR",
-    "name": "Tết Dương Lịch",
-    "type": "SOLAR",
-    "month": 1,
-    "day": 1,
     "leapMonth": false,
     "repeatAnnually": true
   },
