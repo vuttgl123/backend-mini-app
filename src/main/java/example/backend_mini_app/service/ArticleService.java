@@ -122,7 +122,7 @@ public class ArticleService {
         if (tagSlugs == null || tagSlugs.isEmpty()) return new LinkedHashSet<>();
         List<Tag> found = tagRepo.findAll().stream()
                 .filter(t -> tagSlugs.contains(t.getSlug()))
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, Tag> map = found.stream().collect(Collectors.toMap(Tag::getSlug, t -> t));
 

@@ -1,0 +1,975 @@
+-- Session & schema
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+SET sql_mode = 'STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_VALUE_ON_ZERO';
+
+-- Tạo schema (tuỳ chọn): CREATE DATABASE IF NOT EXISTS marketingdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE marketingdb;
+
+-- Helper: kiểu tiền tệ & timestamp
+-- (MariaDB không hỗ trợ create domain; để rõ ràng, ta dùng trực tiếp trong cột)
+
+-- =========================
+-- Core / Lookup
+-- =========================
+
+CREATE TABLE `accounts` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `campaign_statuses` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_campaign_statuses_account` (`account_id`),
+  CONSTRAINT `fk_campaign_statuses_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `ad_statuses` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ad_statuses_account` (`account_id`),
+  CONSTRAINT `fk_ad_statuses_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `campaign_objectives` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_campaign_objectives_account` (`account_id`),
+  CONSTRAINT `fk_campaign_objectives_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `channel_platforms` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_channel_platforms_account` (`account_id`),
+  CONSTRAINT `fk_channel_platforms_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `social_media_channels` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `platform_id` INT UNSIGNED NOT NULL,
+  `url` VARCHAR(500) NULL,
+  `description` TEXT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_social_channels_account` (`account_id`),
+  KEY `idx_social_channels_platform` (`platform_id`),
+  CONSTRAINT `fk_social_channels_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_social_channels_platform` FOREIGN KEY (`platform_id`) REFERENCES `channel_platforms`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Locations
+CREATE TABLE `location_countries` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(10) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_country_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `location_states` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `country_code` VARCHAR(10) NOT NULL,
+  `code` VARCHAR(20) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_states_country_code` (`country_code`),
+  UNIQUE KEY `uq_state_code` (`code`),
+  CONSTRAINT `fk_states_country` FOREIGN KEY (`country_code`) REFERENCES `location_countries`(`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `location_cities` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `state_code` VARCHAR(20) NOT NULL,
+  `code` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(200) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_cities_state_code` (`state_code`),
+  UNIQUE KEY `uq_city_code` (`code`),
+  CONSTRAINT `fk_cities_state` FOREIGN KEY (`state_code`) REFERENCES `location_states`(`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Customers & Zalo
+-- =========================
+
+CREATE TABLE `customers` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `first_name` VARCHAR(150) NOT NULL,
+  `last_name` VARCHAR(150) NOT NULL,
+  `email` VARCHAR(320) NOT NULL,
+  `phone` VARCHAR(30) NULL,
+  `address` VARCHAR(500) NULL,
+  `city_code` VARCHAR(50) NULL,
+  `state_code` VARCHAR(20) NULL,
+  `country_code` VARCHAR(10) NULL,
+  `marketing_consent` TINYINT(1) NOT NULL DEFAULT 0,
+  `consent_timestamp` DATETIME(3) NULL,
+  `consent_source` VARCHAR(200) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_customers_account_email` (`account_id`,`email`),
+  KEY `idx_customers_account` (`account_id`),
+  KEY `idx_customers_created_at` (`created_at`),
+  KEY `idx_customers_updated_at` (`updated_at`),
+  CONSTRAINT `fk_customers_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_customers_country` FOREIGN KEY (`country_code`) REFERENCES `location_countries`(`code`),
+  CONSTRAINT `fk_customers_state` FOREIGN KEY (`state_code`) REFERENCES `location_states`(`code`),
+  CONSTRAINT `fk_customers_city` FOREIGN KEY (`city_code`) REFERENCES `location_cities`(`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Tạo UNIQUE (account_id, id) để hỗ trợ FK kép từ bảng con
+ALTER TABLE `customers` ADD UNIQUE KEY `uq_customers_account_id_id` (`account_id`,`id`);
+
+CREATE TABLE `zalo_accounts` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `zalo_user_id` VARCHAR(100) NOT NULL,
+  `display_name` VARCHAR(200) NULL,
+  `email` VARCHAR(320) NULL,
+  `avatar_url` VARCHAR(500) NULL,
+  `token_ciphertext` TEXT NULL,
+  `refresh_token_ciphertext` TEXT NULL,
+  `scopes` TEXT NULL,
+  `last_refreshed_at` DATETIME(3) NULL,
+  `token_expiry` DATETIME(3) NULL,
+  `revoked_at` DATETIME(3) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_zalo_user_per_account` (`account_id`,`zalo_user_id`),
+  KEY `idx_zalo_accounts_account` (`account_id`),
+  KEY `idx_zalo_accounts_last_refreshed` (`last_refreshed_at`),
+  CONSTRAINT `fk_zalo_accounts_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ALTER TABLE `zalo_accounts` ADD UNIQUE KEY `uq_zalo_accounts_account_id_id` (`account_id`,`id`);
+
+CREATE TABLE `customerZaloLinks` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `zalo_account_id` INT UNSIGNED NOT NULL,
+  `primary_flag` TINYINT(1) NOT NULL DEFAULT 0,
+  `linked_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_customer_zalo_primary` (`account_id`,`customer_id`,`primary_flag`),
+  KEY `idx_czl_account` (`account_id`),
+  KEY `idx_czl_customer` (`customer_id`),
+  KEY `idx_czl_zalo` (`zalo_account_id`),
+  KEY `idx_czl_linked_at` (`linked_at`),
+  CONSTRAINT `fk_czl_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_czl_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_czl_zalo` FOREIGN KEY (`zalo_account_id`) REFERENCES `zalo_accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Products
+-- =========================
+CREATE TABLE `products` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `description` TEXT NULL,
+  `category` VARCHAR(150) NULL,
+  `price` DECIMAL(18,2) NOT NULL,
+  `launch_date` DATE NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_products_account` (`account_id`),
+  CONSTRAINT `fk_products_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ALTER TABLE `products` ADD UNIQUE KEY `uq_products_account_id_id` (`account_id`,`id`);
+
+CREATE TABLE `product_variants` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `product_id` INT UNSIGNED NOT NULL,
+  `sku` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `price` DECIMAL(18,2) NOT NULL,
+  `attributes` JSON NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_variant_per_product_sku` (`product_id`,`sku`),
+  KEY `idx_variants_account` (`account_id`),
+  KEY `idx_variants_product` (`product_id`),
+  CONSTRAINT `chk_variant_attributes_json` CHECK (JSON_VALID(`attributes`)),
+  CONSTRAINT `fk_variants_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_variants_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Campaigns / Ads
+-- =========================
+
+CREATE TABLE `marketing_campaigns` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `product_id` INT UNSIGNED NULL,
+  `start_date` DATE NOT NULL,
+  `end_date` DATE NULL,
+  `budget` DECIMAL(18,2) NOT NULL,
+  `objective_id` INT UNSIGNED NULL,
+  `status_id` INT UNSIGNED NULL,
+  `timezone` VARCHAR(64) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_campaigns_account` (`account_id`),
+  KEY `idx_campaigns_product` (`product_id`),
+  KEY `idx_campaigns_objective` (`objective_id`),
+  KEY `idx_campaigns_status` (`status_id`),
+  KEY `idx_campaigns_start` (`start_date`),
+  KEY `idx_campaigns_end` (`end_date`),
+  CONSTRAINT `fk_campaigns_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_campaigns_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`),
+  CONSTRAINT `fk_campaigns_objective` FOREIGN KEY (`objective_id`) REFERENCES `campaign_objectives`(`id`),
+  CONSTRAINT `fk_campaigns_status` FOREIGN KEY (`status_id`) REFERENCES `campaign_statuses`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ALTER TABLE `marketing_campaigns` ADD UNIQUE KEY `uq_campaigns_account_id_id` (`account_id`,`id`);
+
+CREATE TABLE `campaign_channels` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `campaign_id` INT UNSIGNED NOT NULL,
+  `channel_id` INT UNSIGNED NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_campaign_channel` (`campaign_id`,`channel_id`),
+  KEY `idx_cc_account` (`account_id`),
+  KEY `idx_cc_campaign` (`campaign_id`),
+  KEY `idx_cc_channel` (`channel_id`),
+  CONSTRAINT `fk_cc_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_cc_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_cc_channel` FOREIGN KEY (`channel_id`) REFERENCES `social_media_channels`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `advertisements` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `campaign_id` INT UNSIGNED NOT NULL,
+  `channel_id` INT UNSIGNED NOT NULL,
+  `product_variant_id` INT UNSIGNED NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `content` TEXT NULL,
+  `media_url` VARCHAR(500) NULL,
+  `start_date` DATE NOT NULL,
+  `end_date` DATE NULL,
+  `budget` DECIMAL(18,2) NOT NULL,
+  `status_id` INT UNSIGNED NULL,
+  `variant_id` INT UNSIGNED NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ads_account` (`account_id`),
+  KEY `idx_ads_campaign` (`campaign_id`),
+  KEY `idx_ads_channel` (`channel_id`),
+  KEY `idx_ads_product_variant` (`product_variant_id`),
+  KEY `idx_ads_status` (`status_id`),
+  KEY `idx_ads_exp_variant` (`variant_id`),
+  KEY `idx_ads_start` (`start_date`),
+  KEY `idx_ads_end` (`end_date`),
+  CONSTRAINT `fk_ads_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_ads_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_ads_channel` FOREIGN KEY (`channel_id`) REFERENCES `social_media_channels`(`id`),
+  CONSTRAINT `fk_ads_product_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants`(`id`),
+  CONSTRAINT `fk_ads_status` FOREIGN KEY (`status_id`) REFERENCES `ad_statuses`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ALTER TABLE `advertisements` ADD UNIQUE KEY `uq_advertisements_account_id_id` (`account_id`,`id`);
+
+-- =========================
+-- Audience / Journeys / OA
+-- =========================
+
+CREATE TABLE `audiences` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `type` VARCHAR(100) NOT NULL,
+  `definitionJSON` JSON NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_audiences_account` (`account_id`),
+  CONSTRAINT `chk_audience_def_json` CHECK (JSON_VALID(`definitionJSON`)),
+  CONSTRAINT `fk_audiences_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `audienceMembers` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `audience_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `joined_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_audience_member_once` (`audience_id`,`customer_id`),
+  KEY `idx_am_account` (`account_id`),
+  KEY `idx_am_audience` (`audience_id`),
+  KEY `idx_am_customer` (`customer_id`),
+  KEY `idx_am_joined` (`joined_at`),
+  CONSTRAINT `fk_am_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_am_audience` FOREIGN KEY (`audience_id`) REFERENCES `audiences`(`id`),
+  CONSTRAINT `fk_am_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `audienceSyncs` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `audience_id` INT UNSIGNED NOT NULL,
+  `target` VARCHAR(100) NOT NULL,
+  `status` VARCHAR(50) NULL,
+  `synced_at` DATETIME(3) NULL,
+  `statsJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_as_account` (`account_id`),
+  KEY `idx_as_audience` (`audience_id`),
+  KEY `idx_as_synced` (`synced_at`),
+  CONSTRAINT `chk_as_stats_json` CHECK (JSON_VALID(`statsJSON`)),
+  CONSTRAINT `fk_as_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_as_audience` FOREIGN KEY (`audience_id`) REFERENCES `audiences`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `journeys` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `status` VARCHAR(50) NULL,
+  `start_at` DATETIME(3) NULL,
+  `end_at` DATETIME(3) NULL,
+  `timezone` VARCHAR(64) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_journeys_account` (`account_id`),
+  CONSTRAINT `fk_journeys_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `journeySteps` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `journey_id` INT UNSIGNED NOT NULL,
+  `step_no` INT NOT NULL,
+  `type` VARCHAR(100) NOT NULL,
+  `configJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_journey_step_no` (`journey_id`,`step_no`),
+  KEY `idx_js_account` (`account_id`),
+  KEY `idx_js_journey` (`journey_id`),
+  CONSTRAINT `chk_js_config_json` CHECK (JSON_VALID(`configJSON`)),
+  CONSTRAINT `fk_js_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_js_journey` FOREIGN KEY (`journey_id`) REFERENCES `journeys`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `journeyLogs` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `journey_id` INT UNSIGNED NOT NULL,
+  `step_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `event_time` DATETIME(3) NOT NULL,
+  `outcome` VARCHAR(100) NULL,
+  `detailJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_jl_account_event` (`account_id`,`event_time`),
+  KEY `idx_jl_journey` (`journey_id`),
+  KEY `idx_jl_step` (`step_id`),
+  KEY `idx_jl_customer` (`customer_id`),
+  CONSTRAINT `chk_jl_detail_json` CHECK (JSON_VALID(`detailJSON`)),
+  CONSTRAINT `fk_jl_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_jl_journey` FOREIGN KEY (`journey_id`) REFERENCES `journeys`(`id`),
+  CONSTRAINT `fk_jl_step` FOREIGN KEY (`step_id`) REFERENCES `journeySteps`(`id`),
+  CONSTRAINT `fk_jl_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `oaTemplates` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `code` VARCHAR(150) NOT NULL,
+  `content` TEXT NOT NULL,
+  `variablesJSON` JSON NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_oat_code_per_account` (`account_id`,`code`),
+  KEY `idx_oat_account` (`account_id`),
+  CONSTRAINT `chk_oat_vars_json` CHECK (JSON_VALID(`variablesJSON`)),
+  CONSTRAINT `fk_oat_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `oaMessages` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `campaign_id` INT UNSIGNED NULL,
+  `template_id` INT UNSIGNED NULL,
+  `direction` VARCHAR(20) NOT NULL, -- inbound/outbound
+  `content` TEXT NULL,
+  `varsJSON` JSON NULL,
+  `status` VARCHAR(50) NULL,
+  `error_code` VARCHAR(100) NULL,
+  `sent_at` DATETIME(3) NULL,
+  `delivered_at` DATETIME(3) NULL,
+  `read_at` DATETIME(3) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_oam_account_sent` (`account_id`,`sent_at`),
+  KEY `idx_oam_customer` (`customer_id`),
+  KEY `idx_oam_campaign` (`campaign_id`),
+  KEY `idx_oam_template` (`template_id`),
+  CONSTRAINT `chk_oam_vars_json` CHECK (JSON_VALID(`varsJSON`)),
+  CONSTRAINT `fk_oam_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_oam_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_oam_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_oam_template` FOREIGN KEY (`template_id`) REFERENCES `oaTemplates`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `oaWebhookEvents` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `event_type` VARCHAR(100) NOT NULL,
+  `payloadJSON` JSON NOT NULL,
+  `received_at` DATETIME(3) NOT NULL,
+  `processed_at` DATETIME(3) NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_owe_account_received` (`account_id`,`received_at`),
+  CONSTRAINT `chk_owe_payload_json` CHECK (JSON_VALID(`payloadJSON`)),
+  CONSTRAINT `fk_owe_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Events / Sessions / Attribution
+-- =========================
+
+CREATE TABLE `sessions` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NULL,
+  `started_at` DATETIME(3) NOT NULL,
+  `ended_at` DATETIME(3) NULL,
+  `device_id` VARCHAR(100) NULL,
+  `utm_source` VARCHAR(100) NULL,
+  `utm_medium` VARCHAR(100) NULL,
+  `utm_campaign` VARCHAR(150) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_sessions_account_started` (`account_id`,`started_at`),
+  KEY `idx_sessions_customer` (`customer_id`),
+  CONSTRAINT `fk_sessions_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_sessions_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `events` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NULL,
+  `session_id` INT UNSIGNED NULL,
+  `event_time` DATETIME(3) NOT NULL,
+  `event_name` VARCHAR(150) NOT NULL,
+  `propertiesJSON` JSON NULL,
+  `campaign_id` INT UNSIGNED NULL,
+  `advertisement_id` INT UNSIGNED NULL,
+  `source` VARCHAR(100) NULL,
+  `device_id` VARCHAR(100) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_events_account_time` (`account_id`,`event_time`),
+  KEY `idx_events_customer` (`customer_id`),
+  KEY `idx_events_session` (`session_id`),
+  KEY `idx_events_campaign` (`campaign_id`),
+  KEY `idx_events_ad` (`advertisement_id`),
+  CONSTRAINT `chk_events_props_json` CHECK (JSON_VALID(`propertiesJSON`)),
+  CONSTRAINT `fk_events_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_events_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_events_session` FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`),
+  CONSTRAINT `fk_events_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_events_ad` FOREIGN KEY (`advertisement_id`) REFERENCES `advertisements`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- (Tuỳ chọn) Partition bảng events theo ngày để tối ưu khối lượng lớn
+-- ALTER TABLE `events`
+-- PARTITION BY RANGE (TO_DAYS(`event_time`)) (
+--   PARTITION p2025m10 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+--   PARTITION pmax VALUES LESS THAN MAXVALUE
+-- );
+
+CREATE TABLE `touchpoints` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NULL,
+  `campaign_id` INT UNSIGNED NULL,
+  `advertisement_id` INT UNSIGNED NULL,
+  `event_time` DATETIME(3) NOT NULL,
+  `type` VARCHAR(100) NULL,
+  `detailJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_touchpoints_account_time` (`account_id`,`event_time`),
+  KEY `idx_touchpoints_customer` (`customer_id`),
+  KEY `idx_touchpoints_campaign` (`campaign_id`),
+  KEY `idx_touchpoints_ad` (`advertisement_id`),
+  CONSTRAINT `chk_touchpoints_detail_json` CHECK (JSON_VALID(`detailJSON`)),
+  CONSTRAINT `fk_touchpoints_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_touchpoints_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_touchpoints_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_touchpoints_ad` FOREIGN KEY (`advertisement_id`) REFERENCES `advertisements`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `conversions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NULL,
+  `campaign_id` INT UNSIGNED NULL,
+  `advertisement_id` INT UNSIGNED NULL,
+  `conversion_time` DATETIME(3) NOT NULL,
+  `type` VARCHAR(100) NULL,
+  `value` DECIMAL(18,2) NULL,
+  `detailJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_conv_account_time` (`account_id`,`conversion_time`),
+  KEY `idx_conv_customer` (`customer_id`),
+  KEY `idx_conv_campaign` (`campaign_id`),
+  KEY `idx_conv_ad` (`advertisement_id`),
+  CONSTRAINT `chk_conv_detail_json` CHECK (JSON_VALID(`detailJSON`)),
+  CONSTRAINT `fk_conv_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_conv_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_conv_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_conv_ad` FOREIGN KEY (`advertisement_id`) REFERENCES `advertisements`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `campaign_performance_metrics` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `campaign_id` INT UNSIGNED NOT NULL,
+  `advertisement_id` INT UNSIGNED NOT NULL,
+  `metric_date` DATE NULL,
+  `metric_hour` DATETIME(3) NULL,
+  `reach` INT NULL,
+  `frequency` DECIMAL(10,2) NULL,
+  `engagements` INT NULL,
+  `sessions` INT NULL,
+  `conversions` INT NULL,
+  `revenue` DECIMAL(18,2) NULL,
+  `cost` DECIMAL(18,2) NULL,
+  `cpc` DECIMAL(18,4) NULL,
+  `cpa` DECIMAL(18,4) NULL,
+  `roas` DECIMAL(10,2) NULL,
+  `utm_source` VARCHAR(100) NULL,
+  `utm_medium` VARCHAR(100) NULL,
+  `utm_campaign` VARCHAR(150) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  UNIQUE KEY `uq_cpm_daily` (`campaign_id`,`advertisement_id`,`metric_date`),
+  KEY `idx_cpm_account` (`account_id`),
+  KEY `idx_cpm_campaign` (`campaign_id`),
+  KEY `idx_cpm_ad` (`advertisement_id`),
+  KEY `idx_cpm_date` (`metric_date`),
+  KEY `idx_cpm_hour` (`metric_hour`),
+  CONSTRAINT `fk_cpm_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_cpm_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_cpm_ad` FOREIGN KEY (`advertisement_id`) REFERENCES `advertisements`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Experiments (A/B)
+-- =========================
+
+CREATE TABLE `experiments` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `campaign_id` INT UNSIGNED NOT NULL,
+  `hypothesis` TEXT NULL,
+  `start_date` DATE NOT NULL,
+  `end_date` DATE NULL,
+  `status` VARCHAR(50) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_experiments_account` (`account_id`),
+  KEY `idx_experiments_campaign` (`campaign_id`),
+  KEY `idx_experiments_start` (`start_date`),
+  KEY `idx_experiments_end` (`end_date`),
+  CONSTRAINT `fk_experiments_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_experiments_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `experimentVariants` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `experiment_id` INT UNSIGNED NOT NULL,
+  `code` VARCHAR(50) NOT NULL,
+  `description` TEXT NULL,
+  `traffic_split` DECIMAL(5,2) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_variant_code_per_experiment` (`experiment_id`,`code`),
+  KEY `idx_ev_account` (`account_id`),
+  KEY `idx_ev_experiment` (`experiment_id`),
+  CONSTRAINT `fk_ev_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_ev_experiment` FOREIGN KEY (`experiment_id`) REFERENCES `experiments`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `experimentAssignments` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `experiment_id` INT UNSIGNED NOT NULL,
+  `variant_id` INT UNSIGNED NOT NULL,
+  `assigned_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_assignment_once` (`experiment_id`,`customer_id`),
+  KEY `idx_ea_account` (`account_id`),
+  KEY `idx_ea_customer` (`customer_id`),
+  KEY `idx_ea_experiment` (`experiment_id`),
+  KEY `idx_ea_variant` (`variant_id`),
+  KEY `idx_ea_assigned` (`assigned_at`),
+  CONSTRAINT `fk_ea_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_ea_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_ea_experiment` FOREIGN KEY (`experiment_id`) REFERENCES `experiments`(`id`),
+  CONSTRAINT `fk_ea_variant` FOREIGN KEY (`variant_id`) REFERENCES `experimentVariants`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `advertisements` ADD CONSTRAINT `fk_ads_exp_variant` FOREIGN KEY (`variant_id`) REFERENCES `experimentVariants`(`id`);
+
+-- =========================
+-- Assets / Links / QR
+-- =========================
+
+CREATE TABLE `assets` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `url` VARCHAR(500) NOT NULL,
+  `checksum` VARCHAR(128) NULL,
+  `width` INT NULL,
+  `height` INT NULL,
+  `duration` INT NULL,
+  `tags` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_assets_account` (`account_id`),
+  CONSTRAINT `chk_assets_tags_json` CHECK (JSON_VALID(`tags`)),
+  CONSTRAINT `fk_assets_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `campaignAssets` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `campaign_id` INT UNSIGNED NOT NULL,
+  `asset_id` INT UNSIGNED NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_campaign_asset` (`campaign_id`,`asset_id`),
+  KEY `idx_ca_account` (`account_id`),
+  KEY `idx_ca_campaign` (`campaign_id`),
+  KEY `idx_ca_asset` (`asset_id`),
+  CONSTRAINT `fk_ca_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_ca_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`),
+  CONSTRAINT `fk_ca_asset` FOREIGN KEY (`asset_id`) REFERENCES `assets`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `adAssets` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `advertisement_id` INT UNSIGNED NOT NULL,
+  `asset_id` INT UNSIGNED NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ad_asset` (`advertisement_id`,`asset_id`),
+  KEY `idx_aa_account` (`account_id`),
+  KEY `idx_aa_ad` (`advertisement_id`),
+  KEY `idx_aa_asset` (`asset_id`),
+  CONSTRAINT `fk_aa_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_aa_ad` FOREIGN KEY (`advertisement_id`) REFERENCES `advertisements`(`id`),
+  CONSTRAINT `fk_aa_asset` FOREIGN KEY (`asset_id`) REFERENCES `assets`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `links` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `target_url` VARCHAR(1000) NOT NULL,
+  `short_code` VARCHAR(32) NOT NULL,
+  `utm_source` VARCHAR(100) NULL,
+  `utm_medium` VARCHAR(100) NULL,
+  `utm_campaign` VARCHAR(150) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_links_short_code` (`short_code`),
+  KEY `idx_links_account` (`account_id`),
+  CONSTRAINT `fk_links_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `linkClicks` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `link_id` INT UNSIGNED NOT NULL,
+  `clicked_at` DATETIME(3) NOT NULL,
+  `customer_id` INT UNSIGNED NULL,
+  `device_id` VARCHAR(100) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_lc_account_time` (`account_id`,`clicked_at`),
+  KEY `idx_lc_link` (`link_id`),
+  KEY `idx_lc_customer` (`customer_id`),
+  CONSTRAINT `fk_lc_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_lc_link` FOREIGN KEY (`link_id`) REFERENCES `links`(`id`),
+  CONSTRAINT `fk_lc_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `qrCodes` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `link_id` INT UNSIGNED NOT NULL,
+  `image_url` VARCHAR(500) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_qr_account` (`account_id`),
+  KEY `idx_qr_link` (`link_id`),
+  CONSTRAINT `fk_qr_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_qr_link` FOREIGN KEY (`link_id`) REFERENCES `links`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Feedback
+-- =========================
+
+CREATE TABLE `user_feedback` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `customer_id` INT UNSIGNED NOT NULL,
+  `product_id` INT UNSIGNED NULL,
+  `campaign_id` INT UNSIGNED NULL,
+  `feedback_type` VARCHAR(50) NOT NULL,
+  `feedback_text` TEXT NULL,
+  `rating` INT NULL,
+  `nps_score` INT NULL,
+  `tags` JSON NULL,
+  `submitted_at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_feedback_once_per_day` (`customer_id`,`campaign_id`,`submitted_at`),
+  KEY `idx_uf_account` (`account_id`),
+  KEY `idx_uf_customer` (`customer_id`),
+  KEY `idx_uf_product` (`product_id`),
+  KEY `idx_uf_campaign` (`campaign_id`),
+  KEY `idx_uf_submitted` (`submitted_at`),
+  CONSTRAINT `chk_uf_tags_json` CHECK (JSON_VALID(`tags`)),
+  CONSTRAINT `fk_uf_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_uf_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`),
+  CONSTRAINT `fk_uf_product` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`),
+  CONSTRAINT `fk_uf_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `marketing_campaigns`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `attachments` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `feedback_id` INT UNSIGNED NOT NULL,
+  `file_url` VARCHAR(500) NOT NULL,
+  `file_type` VARCHAR(100) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_att_account` (`account_id`),
+  KEY `idx_att_feedback` (`feedback_id`),
+  CONSTRAINT `fk_att_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  CONSTRAINT `fk_att_feedback` FOREIGN KEY (`feedback_id`) REFERENCES `user_feedback`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =========================
+-- Compliance / Controls
+-- =========================
+
+CREATE TABLE `auditLogs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `entity_type` VARCHAR(100) NOT NULL,
+  `entity_id` BIGINT UNSIGNED NOT NULL,
+  `action` VARCHAR(50) NOT NULL,
+  `actor_id` INT UNSIGNED NULL,
+  `occurred_at` DATETIME(3) NOT NULL,
+  `old_valuesJSON` JSON NULL,
+  `new_valuesJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_account_time` (`account_id`,`occurred_at`),
+  KEY `idx_audit_entity` (`entity_type`,`entity_id`),
+  CONSTRAINT `chk_audit_old_json` CHECK (JSON_VALID(`old_valuesJSON`)),
+  CONSTRAINT `chk_audit_new_json` CHECK (JSON_VALID(`new_valuesJSON`)),
+  CONSTRAINT `fk_audit_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `piiAccessLogs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `action` VARCHAR(50) NOT NULL,
+  `entity_type` VARCHAR(100) NOT NULL,
+  `entity_id` BIGINT UNSIGNED NOT NULL,
+  `at` DATETIME(3) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_pii_account_at` (`account_id`,`at`),
+  KEY `idx_pii_user` (`user_id`),
+  CONSTRAINT `fk_pii_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`),
+  -- Lưu ý: yêu cầu của bạn map user_id -> customers.id
+  CONSTRAINT `fk_pii_user_is_customer` FOREIGN KEY (`user_id`) REFERENCES `customers`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `suppressionLists` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `value` VARCHAR(320) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_suppression_value` (`account_id`,`type`,`value`),
+  KEY `idx_supp_account` (`account_id`),
+  CONSTRAINT `fk_supp_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `frequencyCaps` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `windowJSON` JSON NULL,
+  `rulesJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_fc_account` (`account_id`),
+  CONSTRAINT `chk_fc_window_json` CHECK (JSON_VALID(`windowJSON`)),
+  CONSTRAINT `chk_fc_rules_json` CHECK (JSON_VALID(`rulesJSON`)),
+  CONSTRAINT `fk_fc_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `sendRateLimits` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `account_id` INT UNSIGNED NOT NULL,
+  `rulesJSON` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  `deleted_at` DATETIME(3) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_srl_account` (`account_id`),
+  CONSTRAINT `chk_srl_rules_json` CHECK (JSON_VALID(`rulesJSON`)),
+  CONSTRAINT `fk_srl_account` FOREIGN KEY (`account_id`) REFERENCES `accounts`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
